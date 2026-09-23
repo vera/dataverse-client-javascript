@@ -1,5 +1,5 @@
 import { UseCase } from '../../../core/domain/useCases/UseCase'
-import { DatasetVersionSubset } from '../models/DatasetVersion'
+import { DatasetVersionSubset } from '../models/DatasetVersionSubset'
 import { IDatasetsRepository } from '../repositories/IDatasetsRepository'
 
 export class GetDatasetVersions implements UseCase<DatasetVersionSubset> {
@@ -25,6 +25,11 @@ export class GetDatasetVersions implements UseCase<DatasetVersionSubset> {
     offset?: number,
     excludeMetadataBlocks?: boolean
   ): Promise<DatasetVersionSubset> {
-    return await this.datasetsRepository.getDatasetVersions(datasetId, limit, offset, excludeMetadataBlocks)
+    return await this.datasetsRepository.getDatasetVersions(
+      datasetId,
+      limit,
+      offset,
+      excludeMetadataBlocks
+    )
   }
 }

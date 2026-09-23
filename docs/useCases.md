@@ -1265,7 +1265,7 @@ The `DatasetPreviewSubset`returned instance contains a property called `totalDat
 
 #### Get Dataset Versions
 
-Returns the total count of versions and an array of [DatasetVersion](../src/datasets/domain/models/DatasetVersion.ts) that contains information about every specific version.
+Returns the total count of versions and an array of [Dataset](../src/datasets/domain/models/Dataset.ts) that contains information about every specific version.
 
 ##### Example call:
 

@@ -1865,9 +1865,7 @@ describe('DatasetsRepository', () => {
         `[404] Dataset with ID ${nonExistentTestDatasetId} not found.`
       )
 
-      await expect(sut.getDatasetVersions(nonExistentTestDatasetId)).rejects.toThrow(
-        expectedError
-      )
+      await expect(sut.getDatasetVersions(nonExistentTestDatasetId)).rejects.toThrow(expectedError)
     })
 
     test('should return dataset versions with pagination', async () => {

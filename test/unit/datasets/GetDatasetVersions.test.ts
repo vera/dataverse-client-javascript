@@ -1,15 +1,15 @@
 import { ReadError } from '../../../src/core/domain/repositories/ReadError'
 import { IDatasetsRepository } from '../../../src/datasets/domain/repositories/IDatasetsRepository'
-import { createDatasetVersionModel } from '../../testHelpers/datasets/datasetVersionsHelper'
+import { createDatasetModel } from '../../testHelpers/datasets/datasetHelper'
 import { GetDatasetVersions } from '../../../src/datasets/domain/useCases/GetDatasetVersions'
-import { DatasetVersionSubset } from '../../../src/datasets/domain/models/DatasetVersion'
+import { DatasetVersionSubset } from '../../../src/datasets/domain/models/DatasetVersionSubset'
 
 const testDatasetId = 1
 
 describe('execute', () => {
   test('should return dataset versions on repository success', async () => {
     const testDatasetVersionsSubset: DatasetVersionSubset = {
-      versions: [createDatasetVersionModel()]
+      versions: [createDatasetModel()]
     }
     const datasetsRepositoryStub: IDatasetsRepository = {} as IDatasetsRepository
     datasetsRepositoryStub.getDatasetVersions = jest
@@ -30,9 +30,7 @@ describe('execute', () => {
 
   test('should return error result on repository error', async () => {
     const datasetsRepositoryStub: IDatasetsRepository = {} as IDatasetsRepository
-    datasetsRepositoryStub.getDatasetVersions = jest
-      .fn()
-      .mockRejectedValue(new ReadError())
+    datasetsRepositoryStub.getDatasetVersions = jest.fn().mockRejectedValue(new ReadError())
     const sut = new GetDatasetVersions(datasetsRepositoryStub)
 
     await expect(sut.execute(testDatasetId)).rejects.toThrow(ReadError)
