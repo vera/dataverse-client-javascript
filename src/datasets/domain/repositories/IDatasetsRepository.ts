@@ -82,7 +82,8 @@ export interface IDatasetsRepository {
     datasetId: number | string,
     limit?: number,
     offset?: number,
-    excludeMetadataBlocks?: boolean
+    excludeMetadataBlocks?: boolean,
+    keepRawFields?: boolean
   ): Promise<DatasetVersionSubset>
   deleteDatasetDraft(datasetId: number | string): Promise<void>
   linkDataset(datasetId: number | string, collectionIdOrAlias: number | string): Promise<void>

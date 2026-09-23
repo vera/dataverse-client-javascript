@@ -17,19 +17,22 @@ export class GetDatasetVersions implements UseCase<DatasetVersionSubset> {
    * @param {number} [limit] - Limit for pagination (optional).
    * @param {number} [offset] - Offset for pagination (optional).
    * @param {boolean} [excludeMetadataBlocks] - Exclude metadata blocks (optional, default: false).
+   * @param {boolean} [keepRawFields=false] - Indicates whether or not the use case should keep the metadata fields as they are and avoid the transformation to markdown. The default value is false.
    * @returns {Promise<DatasetVersionSubset>} - A DatasetVersionSubset containing the versions and total count.
    */
   async execute(
     datasetId: number | string,
     limit?: number,
     offset?: number,
-    excludeMetadataBlocks?: boolean
+    excludeMetadataBlocks?: boolean,
+    keepRawFields?: boolean
   ): Promise<DatasetVersionSubset> {
     return await this.datasetsRepository.getDatasetVersions(
       datasetId,
       limit,
       offset,
-      excludeMetadataBlocks
+      excludeMetadataBlocks,
+      keepRawFields
     )
   }
 }

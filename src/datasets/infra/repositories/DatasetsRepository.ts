@@ -3,7 +3,8 @@ import { IDatasetsRepository } from '../../domain/repositories/IDatasetsReposito
 import { Dataset, VersionUpdateType } from '../../domain/models/Dataset'
 import {
   transformVersionResponseToDataset,
-  transformDatasetModelToUpdateDatasetRequestPayload
+  transformDatasetModelToUpdateDatasetRequestPayload,
+  transformVersionPayloadToDataset
 } from './transformers/datasetTransformers'
 import { DatasetUserPermissions } from '../../domain/models/DatasetUserPermissions'
 import { transformDatasetUserPermissionsResponseToDatasetUserPermissions } from './transformers/datasetUserPermissionsTransformers'
@@ -36,6 +37,7 @@ import { DatasetUploadLimits } from '../../domain/models/DatasetUploadLimits'
 import { DatasetReview } from '../../domain/models/DatasetReview'
 import { transformDatasetReviewsResponseToDatasetReviews } from './transformers/datasetReviewTransformers'
 import { ExportedDatasetMetadata } from '../../domain/models/ExportedDatasetMetadata'
+import { DatasetPayload } from './transformers/DatasetPayload'
 
 export interface GetAllDatasetPreviewsQueryParams {
   per_page?: number
@@ -377,7 +379,8 @@ export class DatasetsRepository extends ApiRepository implements IDatasetsReposi
     datasetId: string | number,
     limit?: number,
     offset?: number,
-    excludeMetadataBlocks?: boolean
+    excludeMetadataBlocks?: boolean,
+    keepRawFields?: boolean
   ): Promise<DatasetVersionSubset> {
     const queryParams = new URLSearchParams()
 
@@ -399,7 +402,7 @@ export class DatasetsRepository extends ApiRepository implements IDatasetsReposi
       queryParams
     )
       .then((response) => ({
-        versions: response.data.data
+        versions: response.data.data.map((x: DatasetPayload) => transformVersionPayloadToDataset(x, keepRawFields ?? false))
       }))
       .catch((error) => {
         throw error
