@@ -402,7 +402,9 @@ export class DatasetsRepository extends ApiRepository implements IDatasetsReposi
       queryParams
     )
       .then((response) => ({
-        versions: response.data.data.map((x: DatasetPayload) => transformVersionPayloadToDataset(x, keepRawFields ?? false))
+        versions: response.data.data.map((x: DatasetPayload) =>
+          transformVersionPayloadToDataset(x, keepRawFields ?? false)
+        )
       }))
       .catch((error) => {
         throw error

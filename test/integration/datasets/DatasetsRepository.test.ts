@@ -1763,41 +1763,87 @@ describe('DatasetsRepository', () => {
       await deleteCollectionViaApi(testDatasetVersionsCollectionAlias)
     })
 
-    test('should return dataset versions when dataset exists', async () => {
+    test('should return version fields and metadata blocks, and exclude metadata blocks when requested', async () => {
       const testDatasetIds = await createDataset.execute(
         TestConstants.TEST_NEW_DATASET_DTO,
         testDatasetVersionsCollectionAlias
       )
 
-      const actual = await sut.getDatasetVersions(testDatasetIds.numericId)
+      const testLicense = TestConstants.TEST_NEW_DATASET_DTO.license
+      if (testLicense === undefined) {
+        throw new Error('The test dataset must define a license.')
+      }
 
-      expect(actual.versions.length).toBeGreaterThan(0)
-      expect(actual.versions[0].versionState).toBe('DRAFT')
-      expect(actual.versions[0].latestVersionPublishingState).toBe('DRAFT')
-
-      await deleteUnpublishedDatasetViaApi(testDatasetIds.numericId)
-    })
-
-    test('should return dataset versions correctly after first publish', async () => {
-      const testDatasetIds = await createDataset.execute(
-        TestConstants.TEST_NEW_DATASET_DTO,
-        testDatasetVersionsCollectionAlias
-      )
       await publishDataset.execute(testDatasetIds.numericId, VersionUpdateType.MAJOR)
 
       await waitForNoLocks(testDatasetIds.numericId, 10)
 
+      const actual = await sut.getDatasetVersions(testDatasetIds.persistentId)
+      const version = actual.versions[0]
+
+      expect(actual.versions).toHaveLength(1)
+      expect(version).toEqual(
+        expect.objectContaining({
+          id: testDatasetIds.numericId,
+          persistentId: testDatasetIds.persistentId,
+          versionId: expect.any(Number),
+          versionInfo: expect.objectContaining({
+            majorNumber: 1,
+            minorNumber: 0,
+            state: 'RELEASED',
+            lastUpdateTime: expect.any(String),
+            releaseTime: expect.any(Date),
+            createTime: expect.any(Date)
+          }),
+          internalVersionNumber: expect.any(Number),
+          license: expect.objectContaining({
+            name: testLicense.name,
+            uri: testLicense.uri,
+            iconUri: testLicense.iconUri
+          }),
+          publicationDate: expect.any(String),
+          citationDate: expect.any(String),
+          metadataBlocks: expect.arrayContaining([
+            {
+              name: 'citation',
+              fields: expect.objectContaining({
+                title: TestConstants.TEST_NEW_DATASET_DTO.metadataBlockValues[0].fields.title,
+                subject: TestConstants.TEST_NEW_DATASET_DTO.metadataBlockValues[0].fields.subject
+              })
+            }
+          ]),
+          datasetType: 'dataset'
+        })
+      )
+
+      const excludedMetadataBlocks = await sut.getDatasetVersions(
+        testDatasetIds.persistentId,
+        undefined,
+        undefined,
+        true
+      )
+
+      expect(excludedMetadataBlocks.versions).toHaveLength(1)
+      expect(excludedMetadataBlocks.versions[0].metadataBlocks).toBeUndefined()
+
+      await deletePublishedDatasetViaApi(testDatasetIds.persistentId)
+    }, 180000)
+
+    test('should return draft dataset versions correctly', async () => {
+      const testDatasetIds = await createDataset.execute(
+        TestConstants.TEST_NEW_DATASET_DTO,
+        testDatasetVersionsCollectionAlias
+      )
+
       const actual = await sut.getDatasetVersions(testDatasetIds.numericId)
 
       expect(actual.versions.length).toBeGreaterThan(0)
-      expect(actual.versions[0].versionNumber).toBe(1)
-      expect(actual.versions[0].versionMinorNumber).toBe(0)
-      expect(actual.versions[0].versionState).toBe('RELEASED')
+      expect(actual.versions[0].versionInfo.state).toBe('DRAFT')
 
-      await deletePublishedDatasetViaApi(testDatasetIds.persistentId)
+      await deleteUnpublishedDatasetViaApi(testDatasetIds.numericId)
     })
 
-    test('should return dataset versions correctly after deaccessioned', async () => {
+    test('should return deaccessioned dataset versions correctly', async () => {
       const testDatasetIds = await createDataset.execute(
         TestConstants.TEST_NEW_DATASET_DTO,
         testDatasetVersionsCollectionAlias
@@ -1811,9 +1857,10 @@ describe('DatasetsRepository', () => {
       const actual = await sut.getDatasetVersions(testDatasetIds.numericId)
 
       expect(actual.versions.length).toBeGreaterThan(0)
-      expect(actual.versions[0].versionNumber).toBe(1)
-      expect(actual.versions[0].versionMinorNumber).toBe(0)
-      expect(actual.versions[0].versionState).toBe('DEACCESSIONED')
+      expect(actual.versions[0].versionInfo.majorNumber).toBe(1)
+      expect(actual.versions[0].versionInfo.minorNumber).toBe(0)
+      expect(actual.versions[0].versionInfo.state).toBe('DEACCESSIONED')
+      expect(actual.versions[0].versionInfo.deaccessionNote).toBe('Test reason.')
 
       await deletePublishedDatasetViaApi(testDatasetIds.persistentId)
     })
@@ -1851,21 +1898,17 @@ describe('DatasetsRepository', () => {
       const actual = await sut.getDatasetVersions(testDatasetIds.numericId)
 
       expect(actual.versions.length).toEqual(2)
-      expect(actual.versions[0].versionState).toBe('DRAFT')
+      expect(actual.versions[0].versionInfo.state).toBe('DRAFT')
+      expect(actual.versions[0].metadataBlocks?.[0].fields.title).toBe('Updated Dataset Title')
 
-      expect(actual.versions[1].versionNumber).toBe(1)
-      expect(actual.versions[1].versionMinorNumber).toBe(0)
-      expect(actual.versions[1].versionState).toBe('RELEASED')
-
-      await deletePublishedDatasetViaApi(testDatasetIds.persistentId)
-    })
-
-    test('should return error when dataset does not exist', async () => {
-      const expectedError = new ReadError(
-        `[404] Dataset with ID ${nonExistentTestDatasetId} not found.`
+      expect(actual.versions[1].versionInfo.majorNumber).toBe(1)
+      expect(actual.versions[1].versionInfo.minorNumber).toBe(0)
+      expect(actual.versions[1].versionInfo.state).toBe('RELEASED')
+      expect(actual.versions[1].metadataBlocks?.[0].fields.title).toBe(
+        TestConstants.TEST_NEW_DATASET_DTO.metadataBlockValues[0].fields.title
       )
 
-      await expect(sut.getDatasetVersions(nonExistentTestDatasetId)).rejects.toThrow(expectedError)
+      await deletePublishedDatasetViaApi(testDatasetIds.persistentId)
     })
 
     test('should return dataset versions with pagination', async () => {
@@ -1905,26 +1948,26 @@ describe('DatasetsRepository', () => {
       const firstPage = await sut.getDatasetVersions(testDatasetIds.numericId, 5, 0)
 
       expect(firstPage.versions.length).toBe(5)
-      expect(firstPage.versions[0].versionNumber).toBe(1)
-      expect(firstPage.versions[0].versionMinorNumber).toBe(21)
-      expect(firstPage.versions[4].versionNumber).toBe(1)
-      expect(firstPage.versions[4].versionMinorNumber).toBe(17)
+      expect(firstPage.versions[0].versionInfo.majorNumber).toBe(1)
+      expect(firstPage.versions[0].versionInfo.minorNumber).toBe(21)
+      expect(firstPage.versions[4].versionInfo.majorNumber).toBe(1)
+      expect(firstPage.versions[4].versionInfo.minorNumber).toBe(17)
 
       // Test pagination with limit=5, offset=5 (second page)
       const secondPage = await sut.getDatasetVersions(testDatasetIds.numericId, 5, 5)
       expect(secondPage.versions.length).toBe(5)
-      expect(secondPage.versions[0].versionNumber).toBe(1)
-      expect(secondPage.versions[0].versionMinorNumber).toBe(16)
-      expect(secondPage.versions[4].versionNumber).toBe(1)
-      expect(secondPage.versions[4].versionMinorNumber).toBe(12)
+      expect(secondPage.versions[0].versionInfo.majorNumber).toBe(1)
+      expect(secondPage.versions[0].versionInfo.minorNumber).toBe(16)
+      expect(secondPage.versions[4].versionInfo.majorNumber).toBe(1)
+      expect(secondPage.versions[4].versionInfo.minorNumber).toBe(12)
 
       // Test pagination with limit=5, offset=10 (third page)
       const thirdPage = await sut.getDatasetVersions(testDatasetIds.numericId, 5, 10)
       expect(thirdPage.versions.length).toBe(5)
-      expect(thirdPage.versions[0].versionNumber).toBe(1)
-      expect(thirdPage.versions[0].versionMinorNumber).toBe(11)
-      expect(thirdPage.versions[4].versionNumber).toBe(1)
-      expect(thirdPage.versions[4].versionMinorNumber).toBe(7)
+      expect(thirdPage.versions[0].versionInfo.majorNumber).toBe(1)
+      expect(thirdPage.versions[0].versionInfo.minorNumber).toBe(11)
+      expect(thirdPage.versions[4].versionInfo.majorNumber).toBe(1)
+      expect(thirdPage.versions[4].versionInfo.minorNumber).toBe(7)
 
       // Test that all versions are returned without pagination
       const allVersions = await sut.getDatasetVersions(testDatasetIds.numericId)
@@ -1932,6 +1975,14 @@ describe('DatasetsRepository', () => {
 
       await deletePublishedDatasetViaApi(testDatasetIds.persistentId)
     }, 180000)
+
+    test('should return error when dataset does not exist', async () => {
+      const expectedError = new ReadError(
+        `[404] Dataset with ID ${nonExistentTestDatasetId} not found.`
+      )
+
+      await expect(sut.getDatasetVersions(nonExistentTestDatasetId)).rejects.toThrow(expectedError)
+    })
   })
 
   describe('getDatasetDownloadCount', () => {

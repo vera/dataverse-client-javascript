@@ -256,9 +256,10 @@ export const transformVersionPayloadToDataset = (
     },
     ...(versionPayload.metadataBlocks && {
       metadataBlocks: transformPayloadToDatasetMetadataBlocks(
-      versionPayload.metadataBlocks,
-      keepRawFields
-    )}),
+        versionPayload.metadataBlocks,
+        keepRawFields
+      )
+    }),
     ...(versionPayload.isPartOf && {
       isPartOf: transformPayloadToOwnerNode(versionPayload.isPartOf)
     })
